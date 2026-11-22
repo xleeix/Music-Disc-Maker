@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مشغل الأسطوانة — Liquid Glass</title>
+  <style>
+    :root {
+      --bg-dark: #090a0c;
+      --bg-mid: #14171c;
+      --glass-bg: rgba(255, 255, 255, 0.06);
+      --glass-bg-strong: rgba(255, 255, 255, 0.11);
+      --glass-border: rgba(255, 255, 255, 0.16);
+      --glass-highlight: rgba(255, 255, 255, 0.28);
+      --text-main: #f5f7fa;
+      --text-muted: #a3abb8;
+      --silver: #d4d8df;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(220, 226, 236, 0.14), transparent 42%),
+        radial-gradient(circle at 80% 80%, rgba(150, 160, 175, 0.11), transparent 45%),
+        linear-gradient(160deg, var(--bg-dark), var(--bg-mid) 55%, #0c0e12);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 440px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(22px) saturate(140%);
+      -webkit-backdrop-filter: blur(22px) saturate(140%);
+      border: 1px solid var(--glass-border);
+      border-top-color: var(--glass-highlight);
+      border-radius: 28px;
+      padding: 22px 20px 18px;
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.65),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .header-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .glass-input {
+      width: 100%;
+      background: rgba(10, 12, 16, 0.55);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .glass-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .glass-input:focus {
+      border-color: var(--silver);
+      background: rgba(20, 24, 30, 0.72);
+    }
+
+    .turntable-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+    }
+
+    .vinyl-stage {
+      position: relative;
+      width: 248px;
+      height: 248px;
+      border-radius: 50%;
+      padding: 10px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03));
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.75),
+        inset 0 0 18px rgba(255, 255, 255, 0.08);
+    }
+
+    .vinyl-disc {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+      background:
+        repeating-radial-gradient(
+          circle at center,
+          #121418 0px,
+          #121418 3px,
+          #23272f 4px,
+          #15181e 6px
+        );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: spinDisc 5s linear infinite;
+      animation-play-state: paused;
+      will-change: transform;
+    }
+
+    .vinyl-disc.spinning {
+      animation-play-state: running;
+    }
+
+    @keyframes spinDisc {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .vinyl-cover {
+      width: 72%;
+      height: 72%;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.24);
+      background: linear-gradient(135deg, #2a2f3a, #111317);
+      display: none;
+    }
+
+    .vinyl-cover.has-image {
+      display: block;
+    }
+
+    .vinyl-placeholder {
+      width: 72%;
+      height: 72%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.09), rgba(255,255,255,0.02));
+      border: 1px dashed rgba(255, 255, 255, 0.22);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .vinyl-cover.has-image + .vinyl-placeholder {
+      display: none;
+    }
+
+    .vinyl-grooves {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,0.14), transparent 45%),
+        repeating-radial-gradient(
+          circle at center,
+          transparent 0px,
+          transparent 6px,
+          rgba(255, 255, 255, 0.04) 7px,
+          transparent 8px
+        );
+    }
+
+    .spindle-hole {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #090a0c;
+      border: 2px solid rgba(220, 226, 236, 0.65);
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .display-titles {
+      text-align: center;
+      min-height: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .title-main {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    .title-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      word-break: break-word;
+    }
+
+    .controls-panel {
+      background: rgba(12, 14, 18, 0.45);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--silver);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #9aa3b2, #f5f7fa);
+      transition: width 0.15s linear;
+    }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .glass-btn {
+      flex: 1;
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-bg-strong);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, background 0.2s, border-color 0.2s;
+      text-align: center;
+    }
+
+    .glass-btn:hover {
+      background: rgba(255, 255, 255, 0.17);
+      border-color: var(--silver);
+    }
+
+    .glass-btn:active {
+      transform: scale(0.98);
+    }
+
+    .glass-btn.primary {
+      background: linear-gradient(135deg, rgba(255,255,255,0.24), rgba(180,188,200,0.12));
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .glass-btn.record {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(212,216,223,0.22), rgba(255,255,255,0.06));
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+
+    .glass-btn.recording {
+      border-color: #f5f7fa;
+      background: rgba(255, 255, 255, 0.26);
+    }
+
+    .mode-toggle {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 3px;
+      gap: 4px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 7px 8px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn.active {
+      background: rgba(255, 255, 255, 0.18);
+      color: var(--text-main);
+    }
+
+    .range-box {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .range-box.active {
+      display: flex;
+    }
+
+    .range-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .range-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .range-input {
+      width: 100%;
+      background: rgba(10, 12, 16, 0.65);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      padding: 7px 10px;
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .range-input:focus {
+      border-color: var(--silver);
+    }
+
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .upload-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border);
+      color: var(--silver);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      text-align: center;
+    }
+
+    .upload-label:hover {
+      background: rgba(255, 255, 255, 0.13);
+      border-color: var(--silver);
+    }
+
+    .status-note {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      text-align: center;
+      min-height: 16px;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .footer-credit {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .footer-credit a {
+      color: var(--silver);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-credit a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="header-inputs">
+      <input
+        type="text"
+        id="mainTitleInput"
+        class="glass-input"
+        placeholder="اكتب العنوان (اختياري)"
+        autocomplete="off"
+      />
+      <input
+        type="text"
+        id="subTitleInput"
+        class="glass-input"
+        placeholder="اكتب عنواناً فرعياً أو ملاحظة (اختياري)"
+        autocomplete="off"
+      />
+    </section>
+
+    <section class="turntable-wrap">
+      <div class="vinyl-stage">
+        <div id="vinylDisc" class="vinyl-disc">
+          <img id="vinylCover" class="vinyl-cover" alt="غلاف الأسطوانة" />
+          <div class="vinyl-placeholder">ارفع صورة لتتحول إلى أسطوانة</div>
+          <div class="vinyl-grooves"></div>
+          <div class="spindle-hole"></div>
+        </div>
+      </div>
+
+      <div class="display-titles">
+        <div id="displayMain" class="title-main"></div>
+        <div id="displaySub" class="title-sub"></div>
+      </div>
+    </section>
+
+    <section class="controls-panel">
+      <div class="mode-toggle">
+        <button type="button" id="modeOneMin" class="mode-btn active">دقيقة (01:00)</button>
+        <button type="button" id="modeFull" class="mode-btn">كامل المقطع</button>
+        <button type="button" id="modeCustom" class="mode-btn">تحديد وقت</button>
+      </div>
+
+      <div id="customRangeBox" class="range-box">
+        <div class="range-grid">
+          <label class="range-field">
+            البداية (مثال: 0:30 أو 2:15)
+            <input type="text" id="startSecInput" class="range-input" value="00:00" placeholder="00:00" />
+          </label>
+          <label class="range-field">
+            النهاية (مثال: 2:15)
+            <input type="text" id="endSecInput" class="range-input" value="01:00" placeholder="02:15" />
+          </label>
+        </div>
+      </div>
+
+      <div class="progress-row">
+        <span id="currentTimeText">00:00</span>
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <span id="targetTimeText">01:00</span>
+      </div>
+
+      <div class="action-row">
+        <button type="button" id="playToggleBtn" class="glass-btn primary">تشغيل</button>
+        <button type="button" id="resetBtn" class="glass-btn">إعادة</button>
+      </div>
+
+      <button type="button" id="recordVideoBtn" class="glass-btn record">تسجيل وتنزيل فيديو</button>
+      <div id="statusNote" class="status-note"></div>
+
+      <div class="upload-grid">
+        <label class="upload-label" for="imageInput">
+          اختيار صورة
+          <input type="file" id="imageInput" accept="image/*" />
+        </label>
+        <label class="upload-label" for="audioInput">
+          اختيار صوت
+          <input type="file" id="audioInput" accept="audio/*" />
+        </label>
+      </div>
+    </section>
+
+    <audio id="audioPlayer" preload="metadata"></audio>
+
+    <footer class="footer-credit">
+      الحقوق والتواصل: <a href="https://t.me/xleeix" target="_blank" rel="noopener noreferrer">@xleeix</a>
+    </footer>
+  </main>
+
+  <script>
+    const mainTitleInput = document.getElementById("mainTitleInput");
+    const subTitleInput = document.getElementById("subTitleInput");
+    const displayMain = document.getElementById("displayMain");
+    const displaySub = document.getElementById("displaySub");
+
+    const vinylDisc = document.getElementById("vinylDisc");
+    const vinylCover = document.getElementById("vinylCover");
+    const imageInput = document.getElementById("imageInput");
+    const audioInput = document.getElementById("audioInput");
+    const audioPlayer = document.getElementById("audioPlayer");
+
+    const playToggleBtn = document.getElementById("playToggleBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const recordVideoBtn = document.getElementById("recordVideoBtn");
+    const statusNote = document.getElementById("statusNote");
+    const modeOneMin = document.getElementById("modeOneMin");
+    const modeFull = document.getElementById("modeFull");
+    const modeCustom = document.getElementById("modeCustom");
+    const customRangeBox = document.getElementById("customRangeBox");
+    const startSecInput = document.getElementById("startSecInput");
+    const endSecInput = document.getElementById("endSecInput");
+
+    const currentTimeText = document.getElementById("currentTimeText");
+    const targetTimeText = document.getElementById("targetTimeText");
+    const progressFill = document.getElementById("progressFill");
+
+    let playMode = "onemin";
+    let isPlaying = false;
+    let isRecording = false;
+    let simTime = 0;
+    let lastTick = null;
+    let rafId = null;
+
+    let coverImgObj = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let exportCanvas = null;
+    let exportCtx = null;
+    let exportRafId = null;
+    let exportAngle = 0;
+    let exportLastFrame = null;
+    let audioCtx = null;
+    let audioSourceNode = null;
+    let audioDestNode = null;
+
+    function formatTime(sec) {
+      const safe = Math.max(0, Math.floor(sec));
+      const m = Math.floor(safe / 60);
+      const s = safe % 60;
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function parseTimeInput(rawVal, fallbackSec = 0) {
+      const str = String(rawVal || "").trim();
+      if (!str) return fallbackSec;
+      if (str.includes(":")) {
+        const parts = str.split(":");
+        const mins = Math.max(0, Number(parts[0]) || 0);
+        const secs = Math.max(0, Number(parts[1]) || 0);
+        return mins * 60 + secs;
+      }
+      const num = Number(str);
+      return Number.isFinite(num) && num >= 0 ? num : fallbackSec;
+    }
+
+    function hasLoadedAudio() {
+      return Boolean(audioPlayer.src && !audioPlayer.error && audioPlayer.readyState >= 1);
+    }
+
+    function getAudioDuration() {
+      if (hasLoadedAudio() && Number.isFinite(audioPlayer.duration) && audioPlayer.duration > 0) {
+        return audioPlayer.duration;
+      }
+      return 300;
+    }
+
+    function getRangeWindow() {
+      const dur = getAudioDuration();
+      if (playMode === "onemin") {
+        const start = 0;
+        const end = hasLoadedAudio() ? Math.min(60, dur) : 60;
+        return { start, end: Math.max(start + 1, end) };
+      }
+
+      if (playMode === "full") {
+        const start = 0;
+        const end = hasLoadedAudio() ? dur : 60;
+        return { start, end: Math.max(start + 1, end) };
+      }
+
+      const rawStart = parseTimeInput(startSecInput.value, 0);
+      const rawEnd = parseTimeInput(endSecInput.value, rawStart + 60);
+      const maxCap = hasLoadedAudio() ? dur : Math.max(rawEnd, rawStart + 60);
+      const start = Math.min(rawStart, Math.max(0, maxCap - 1));
+      const end = Math.max(start + 1, Math.min(rawEnd, maxCap));
+      return { start, end };
+    }
+
+    function updateTitles() {
+      displayMain.textContent = mainTitleInput.value.trim();
+      displaySub.textContent = subTitleInput.value.trim();
+    }
+
+    mainTitleInput.addEventListener("input", updateTitles);
+    subTitleInput.addEventListener("input", updateTitles);
+    updateTitles();
+
+    imageInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        vinylCover.src = reader.result;
+        vinylCover.classList.add("has-image");
+        const img = new Image();
+        img.onload = () => { coverImgObj = img; };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    audioInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      audioPlayer.src = url;
+      const { start } = getRangeWindow();
+      audioPlayer.currentTime = start;
+      simTime = start;
+      updateUiFromTime(start);
+    });
+
+    audioPlayer.addEventListener("loadedmetadata", () => {
+      const dur = Math.floor(audioPlayer.duration);
+      if (Number.isFinite(dur) && dur > 0 && playMode === "custom") {
+        const currentEnd = parseTimeInput(endSecInput.value, 60);
+        if (currentEnd > dur) {
+          endSecInput.value = formatTime(dur);
+        }
+      }
+      const { start } = getRangeWindow();
+      updateUiFromTime(start);
+    });
+
+    function setMode(nextMode) {
+      playMode = nextMode;
+      modeOneMin.classList.toggle("active", nextMode === "onemin");
+      modeFull.classList.toggle("active", nextMode === "full");
+      modeCustom.classList.toggle("active", nextMode === "custom");
+      customRangeBox.classList.toggle("active", nextMode === "custom");
+
+      const { start, end } = getRangeWindow();
+      if (hasLoadedAudio()) {
+        audioPlayer.currentTime = start;
+      }
+      simTime = start;
+      updateUiFromTime(start);
+      targetTimeText.textContent = formatTime(end);
+    }
+
+    modeOneMin.addEventListener("click", () => setMode("onemin"));
+    modeFull.addEventListener("click", () => setMode("full"));
+    modeCustom.addEventListener("click", () => setMode("custom"));
+
+    function handleCustomRangeChange() {
+      const { start, end } = getRangeWindow();
+      if (!isPlaying) {
+        if (hasLoadedAudio()) {
+          audioPlayer.currentTime = start;
+        }
+        simTime = start;
+        updateUiFromTime(start);
+      }
+      targetTimeText.textContent = formatTime(end);
+    }
+
+    startSecInput.addEventListener("input", handleCustomRangeChange);
+    endSecInput.addEventListener("input", handleCustomRangeChange);
+
+    startSecInput.addEventListener("blur", () => {
+      startSecInput.value = formatTime(parseTimeInput(startSecInput.value, 0));
+      handleCustomRangeChange();
+    });
+
+    endSecInput.addEventListener("blur", () => {
+      endSecInput.value = formatTime(parseTimeInput(endSecInput.value, 60));
+      handleCustomRangeChange();
+    });
+
+    function updateUiFromTime(nowSec) {
+      const { start, end } = getRangeWindow();
+      const clamped = Math.max(start, Math.min(nowSec, end));
+      const span = Math.max(0.001, end - start);
+      const pct = Math.min(100, Math.max(0, ((clamped - start) / span) * 100));
+
+      currentTimeText.textContent = formatTime(clamped);
+      targetTimeText.textContent = formatTime(end);
+      progressFill.style.width = `${pct}%`;
+    }
+
+    function drawExportFrame(now) {
+      if (!isRecording || !exportCtx || !exportCanvas) return;
+      if (exportLastFrame === null) exportLastFrame = now;
+      const dt = (now - exportLastFrame) / 1000;
+      exportLastFrame = now;
+      exportAngle = (exportAngle + dt * 72) % 360;
+
+      const w = exportCanvas.width;
+      const h = exportCanvas.height;
+      const cx = w / 2;
+      const cy = h / 2 - 40;
+      const discR = 230;
+
+      exportCtx.fillStyle = "#0b0d11";
+      exportCtx.fillRect(0, 0, w, h);
+
+      exportCtx.save();
+      exportCtx.translate(cx, cy);
+      exportCtx.rotate((exportAngle * Math.PI) / 180);
+
+      exportCtx.beginPath();
+      exportCtx.arc(0, 0, discR, 0, Math.PI * 2);
+      exportCtx.fillStyle = "#161920";
+      exportCtx.fill();
+      exportCtx.lineWidth = 4;
+      exportCtx.strokeStyle = "rgba(255,255,255,0.22)";
+      exportCtx.stroke();
+
+      for (let r = 135; r < discR - 10; r += 10) {
+        exportCtx.beginPath();
+        exportCtx.arc(0, 0, r, 0, Math.PI * 2);
+        exportCtx.lineWidth = 1.5;
+        exportCtx.strokeStyle = "rgba(255,255,255,0.06)";
+        exportCtx.stroke();
+      }
+
+      const coverR = 130;
+      exportCtx.beginPath();
+      exportCtx.arc(0, 0, coverR, 0, Math.PI * 2);
+      exportCtx.save();
+      exportCtx.clip();
+
+      if (coverImgObj) {
+        const size = coverR * 2;
+        const iw = coverImgObj.width;
+        const ih = coverImgObj.height;
+        const scale = Math.max(size / iw, size / ih);
+        const dw = iw * scale;
+        const dh = ih * scale;
+        exportCtx.drawImage(coverImgObj, -dw / 2, -dh / 2, dw, dh);
+      } else {
+        exportCtx.fillStyle = "#222732";
+        exportCtx.fillRect(-coverR, -coverR, coverR * 2, coverR * 2);
+      }
+      exportCtx.restore();
+
+      exportCtx.beginPath();
+      exportCtx.arc(0, 0, 14, 0, Math.PI * 2);
+      exportCtx.fillStyle = "#090a0c";
+      exportCtx.fill();
+      exportCtx.lineWidth = 3;
+      exportCtx.strokeStyle = "#d4d8df";
+      exportCtx.stroke();
+
+      exportCtx.restore();
+
+      const mainText = mainTitleInput.value.trim();
+      const subText = subTitleInput.value.trim();
+      exportCtx.textAlign = "center";
+
+      if (mainText) {
+        exportCtx.fillStyle = "#f5f7fa";
+        exportCtx.font = "bold 32px sans-serif";
+        exportCtx.fillText(mainText, cx, cy + discR + 62);
+      }
+      if (subText) {
+        exportCtx.fillStyle = "#a3abb8";
+        exportCtx.font = "22px sans-serif";
+        exportCtx.fillText(subText, cx, cy + discR + 102);
+      }
+
+      exportRafId = requestAnimationFrame(drawExportFrame);
+    }
+
+    function finishRecording() {
+      if (!isRecording) return;
+      isRecording = false;
+      recordVideoBtn.classList.remove("recording");
+      recordVideoBtn.textContent = "تسجيل وتنزيل فيديو";
+      if (exportRafId) {
+        cancelAnimationFrame(exportRafId);
+        exportRafId = null;
+      }
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    }
+
+    function stopPlayback(resetToStart = false) {
+      isPlaying = false;
+      vinylDisc.classList.remove("spinning");
+      playToggleBtn.textContent = "تشغيل";
+      lastTick = null;
+
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+
+      if (audioPlayer.src) {
+        audioPlayer.pause();
+      }
+
+      if (isRecording) {
+        finishRecording();
+      }
+
+      if (resetToStart) {
+        const { start } = getRangeWindow();
+        if (hasLoadedAudio()) {
+          audioPlayer.currentTime = start;
+        }
+        simTime = start;
+        updateUiFromTime(start);
+      }
+    }
+
+    function loop(now) {
+      if (!isPlaying) return;
+      if (lastTick === null) lastTick = now;
+      const dt = (now - lastTick) / 1000;
+      lastTick = now;
+
+      const { end } = getRangeWindow();
+      let currentSec = simTime;
+
+      if (hasLoadedAudio()) {
+        currentSec = audioPlayer.currentTime;
+      } else {
+        simTime += dt;
+        currentSec = simTime;
+      }
+
+      if (currentSec >= end || (hasLoadedAudio() && audioPlayer.ended)) {
+        updateUiFromTime(end);
+        stopPlayback(true);
+        return;
+      }
+
+      updateUiFromTime(currentSec);
+      rafId = requestAnimationFrame(loop);
+    }
+
+    async function startPlayback(withRecording = false) {
+      if (isPlaying) {
+        stopPlayback(false);
+        return;
+      }
+
+      const { start, end } = getRangeWindow();
+      let initialSec = hasLoadedAudio() ? audioPlayer.currentTime : simTime;
+
+      if (initialSec < start || initialSec >= end) {
+        initialSec = start;
+        simTime = start;
+        if (hasLoadedAudio()) {
+          audioPlayer.currentTime = start;
+        }
+      }
+
+      if (withRecording && typeof MediaRecorder !== "undefined") {
+        try {
+          exportCanvas = document.createElement("canvas");
+          exportCanvas.width = 720;
+          exportCanvas.height = 720;
+          exportCtx = exportCanvas.getContext("2d");
+
+          const canvasStream = exportCanvas.captureStream(30);
+          const combinedTracks = [...canvasStream.getVideoTracks()];
+
+          if (hasLoadedAudio()) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+              if (!audioCtx) audioCtx = new AudioContextClass();
+              if (audioCtx.state === "suspended") await audioCtx.resume();
+              if (!audioSourceNode) {
+                audioSourceNode = audioCtx.createMediaElementSource(audioPlayer);
+                audioDestNode = audioCtx.createMediaStreamDestination();
+                audioSourceNode.connect(audioDestNode);
+                audioSourceNode.connect(audioCtx.destination);
+              }
+              combinedTracks.push(...audioDestNode.stream.getAudioTracks());
+            }
+          }
+
+          const stream = new MediaStream(combinedTracks);
+          recordedChunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = (ev) => {
+            if (ev.data && ev.data.size > 0) recordedChunks.push(ev.data);
+          };
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: "video/webm" });
+            const dlUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = dlUrl;
+            a.download = "vinyl-disc.webm";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(dlUrl), 4000);
+            statusNote.textContent = "تم تنزيل الفيديو على جهازك.";
+          };
+
+          mediaRecorder.start();
+          isRecording = true;
+          exportAngle = 0;
+          exportLastFrame = null;
+          recordVideoBtn.classList.add("recording");
+          recordVideoBtn.textContent = "إيقاف وحفظ الفيديو";
+          statusNote.textContent = "جارٍ تسجيل الأسطوانة... سينزل تلقائياً عند الانتهاء.";
+          exportRafId = requestAnimationFrame(drawExportFrame);
+        } catch (_) {
+          statusNote.textContent = "المتصفح لم يدعم التسجيل المباشر؛ يمكنك استخدام تصوير الشاشة.";
+        }
+      }
+
+      isPlaying = true;
+      vinylDisc.classList.add("spinning");
+      playToggleBtn.textContent = "إيقاف";
+      lastTick = null;
+      updateUiFromTime(initialSec);
+
+      if (audioPlayer.src) {
+        try {
+          await audioPlayer.play();
+        } catch (_) {
+          // Keep disc spinning and timer running if browser blocks autoplay audio
+        }
+      }
+
+      rafId = requestAnimationFrame(loop);
+    }
+
+    playToggleBtn.addEventListener("click", () => startPlayback(false));
+    recordVideoBtn.addEventListener("click", () => startPlayback(true));
+
+    resetBtn.addEventListener("click", () => {
+      stopPlayback(true);
+    });
+
+    setMode("onemin");
+  </script>
+</body>
+</html>
